@@ -1,52 +1,67 @@
-# Your workspace
+<p align="center">
+  <img alt="Red Scribble" src="template.svg" width="480">
+</p>
 
-This folder is your mind's home: everything it knows, everything it builds,
-and the machinery that keeps it running.
+# Red Scribble
 
-## Creations
+<p align="center">
+  <a href="https://boweiliu.github.io/open-in-minds/?git_url=https://github.com/MINDS_TEMPLATE_REPO_URL"><img alt="Open in Minds" height="64" src="https://img.shields.io/badge/Open%20in%20Minds-D8D1C0?style=for-the-badge"></a>
+</p>
 
-Broadly, in Minds you make "creations". These can be "code" (apps, skills, and
-the services behind them) or "data" (documents, images, notes).
+Didn't work? Create a Minds workspace and paste this to your agent:
+` /use-template https://github.com/MINDS_TEMPLATE_REPO_URL`
 
-Minds makes this easier by defining some conventions for the common things
-you'll want to make:
+## Why you care
 
-1. an "app" - something you can open as a tab and interact with
-2. a "skill" - teaches your mind how to do work you care about. A skill that
-   is automatically run on a schedule is called an "automation" (the
-   machinery that runs them lives in `system/libs/automations/`; the weekly
-   Caretaker is the built-in example)
-3. some "data" - documents, images, notes, or data created by your apps and
-   skills
-4. some "customizations" - changes to any of the above. Everything in Minds
-   can be modified by you!
+Scribble, type, or speak UI feedback directly on any app in your workspace; it routes to your chat agent as one batched, rendered card per send.
 
-## What's here
+Describing a UI problem in words is slow and lossy. "The heading is too big, no,
+the one above the second card" takes three sentences and still lands wrong.
 
-- `apps/` - Everything you can open as a tab: the built-in apps (the
-  terminal, the browser) and the apps your mind builds for you. (A shortcut
-  to `system/apps/`.)
-- `skills/` - Everything your mind knows how to do: the built-in skills and
-  the ones it has learned for you. (A shortcut to `.agents/skills/`.)
-- `data/` - Your workspace's data: documents and project folders, files
-  you've uploaded, your mind's memories, and each app's stored data.
-- `docs/` - Guides to this workspace: what it is, how it works, and a history
-  of where it came from.
-- `system/` - The machinery that runs the workspace: the apps themselves,
-  background services, scripts, and configuration. You can look around (every
-  folder has a README), and your mind maintains it for you.
+Red Scribble lets you point instead. Draw on the thing. Circle it, cross it out,
+scrawl a note beside it, or just say what you want out loud. What you marked --
+with a screenshot, the exact spot, and the element underneath -- arrives in your
+agent's chat as one tidy card, and the agent gets on with it. Marks vanish as
+they are dealt with, so what is left on screen is what is still outstanding.
 
-A few housekeeping files live alongside them:
+## How to use it
 
-- `README.md` - This file.
-- `CLAUDE.md` - The standing instructions your mind follows.
-- `pyproject.toml` and `uv.lock` - The Python project definition; the tooling
-  requires them at the top level.
+1. Ask any chat to **turn on Red Scribble** for an app (there is a skill for
+   it: `enable-red-scribble`). It adds one line to that app's page and points
+   feedback at that chat.
+2. Open the app. A **red circle** sits in the lower-right corner.
+3. **Click it.** The page stops responding to clicks -- now you are annotating.
+   Draw anywhere. **Double-click** for a typed note. **Double-click and hold** to
+   speak one.
+4. **Click the circle again** to hand the page back. Your marks hide but are kept.
+5. **Press and hold the circle** for the menu: choose which chat receives the
+   feedback, flip on **Live** if you want it sent automatically, or press **Send
+   Pending Scribbles**.
 
-## Where things are kept safe
+Everything you gathered arrives in that chat as one card. Try it on the included
+**Scribble Box** page first -- it is there to be scribbled on.
 
-The workspace is a git repository: code and configuration changes are
-committed as your mind works. Everything under `data/` is deliberately kept
-out of git (it can be large, personal, or both) and is protected by the
-workspace's continuous encrypted backup instead, along with the rest of the
-workspace. See `docs/` for details.
+## Ideas for making it yours
+
+- **Put it on your own apps.** The opt-in is two lines: call
+  `register_jinja_helper(app)` once, and drop `{{ red_scribble_tag() }}` into
+  your page's `<head>`. That is the whole contract.
+- **Use Live mode for a tight loop.** Marks auto-send a couple of seconds after
+  you make them, and the agent is told to move fast and not polish -- good for
+  pushing a layout around, bad for anything you want kept.
+- **Change what a mark means.** The agent-side playbook is a plain-English skill
+  (`red-scribble-feedback`) -- teach it that a circle means "make this bigger",
+  or that a cross means "delete this", and it will follow you.
+- **Scribble on someone else's app.** Anything served in your workspace can take
+  the opt-in line, not just apps you wrote.
+
+## What this is
+
+This repository is a published **minds template**: a clean, bootable
+snapshot of what a mind built, ready to adapt into your own. It is NOT the
+generic workspace template -- it is this specific project.
+
+[`template.md`](template.md) is the full manifest -- what it is, how it
+works, what it needs to run, and what to adapt -- with the
+machine-readable half (recipe, requirements, and the environment it needs
+installed) in [`template.toml`](template.toml).

@@ -21,7 +21,12 @@ from typing import Generator
 from unittest.mock import patch
 
 import pytest
+from red_scribble.config import RedScribbleConfig
+from red_scribble.dispatch import PacketId
+from red_scribble.dispatch import SavedScribble
+from red_scribble.dispatch import build_feedback_message
 
+from imbue.mngr.utils.polling import poll_for_value
 from imbue.mngr.utils.polling import wait_for
 from imbue.system_interface.agent_discovery import AgentInfo
 from imbue.system_interface.agent_manager import AgentManager
@@ -539,6 +544,127 @@ def test_tool_calls_render_as_collapsible(tmp_path: Path, page: Page) -> None:
         page.locator(".tool-call-header").first.click()
         expect(tool_details).to_be_visible()
         expect(tool_details).to_contain_text("file contents here")
+
+
+def _red_scribble_document() -> str:
+    """A genuine ``<red-scribble-feedback>`` document, built by the real library
+    (``build_feedback_message``) so the e2e fixture tracks the live contract the
+    chat view's detector parses -- a stroke, a voice note, and a typed note under
+    one batch envelope with a shared screenshot."""
+    config = RedScribbleConfig(target_agent_id="agent-test-123", mode="batch")
+    saved = [
+        SavedScribble(
+            packet={
+                "kind": "stroke",
+                "point": {"x": 534.19, "y": 86.38},
+                "anchor": "html > body > main",
+                "strokes": [[[1, 2]]],
+                "page_url": "https://example/app",
+            },
+            packet_id=PacketId.generate(),
+            raw_path=Path("/abs/1.json"),
+        ),
+        SavedScribble(
+            packet={
+                "kind": "voice",
+                "point": {"x": 590.61, "y": 116.48},
+                "anchor": "main > div",
+                "transcript": "I want an earthquake",
+                "page_url": "https://example/app",
+            },
+            packet_id=PacketId.generate(),
+            raw_path=Path("/abs/2.json"),
+        ),
+        SavedScribble(
+            packet={
+                "kind": "text",
+                "point": {"x": 618.27, "y": 159.35},
+                "anchor": "main > div",
+                "text": "earthquake button",
+                "page_url": "https://example/app",
+            },
+            packet_id=PacketId.generate(),
+            raw_path=Path("/abs/3.json"),
+        ),
+    ]
+    return build_feedback_message(saved, config, "scribble-box", Path("/abs/shot.png"))
+
+
+def _red_scribble_session_events() -> list[dict[str, Any]]:
+    """A transcript with a genuine Red Scribble feedback message followed by a
+    truncated (malformed) one, so a single scene exercises both the batch-card
+    rendering and the fall-back-to-plain-bubble path."""
+    document = _red_scribble_document()
+    truncated = document[: len(document) - 40]
+    return [
+        {
+            "type": "user",
+            "uuid": "uuid-rs-1",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "message": {"role": "user", "content": document},
+        },
+        {
+            "type": "user",
+            "uuid": "uuid-rs-2",
+            "timestamp": "2026-01-01T00:00:01Z",
+            "message": {"role": "user", "content": truncated},
+        },
+    ]
+
+
+@pytest.mark.timeout(45, func_only=False)
+def test_red_scribble_feedback_renders_as_batch_card(tmp_path: Path, page: Page) -> None:
+    """A Red Scribble feedback message renders as a batch card of scribble tiles;
+    hovering a tile reveals its floating detail card; a truncated document falls
+    back to a plain user bubble instead of a broken card."""
+    with _running_e2e_server(tmp_path, _PORT + 6, session_events=_red_scribble_session_events()) as (base_url, _, _):
+        page.goto(base_url)
+
+        # Exactly one batch card renders: the good document, not the truncated one.
+        card = page.locator(".rs-batch")
+        expect(card).to_have_count(1, timeout=15000)
+
+        # Header: brand, batch mode badge, and the "N scribbles · app" summary.
+        expect(card.locator(".rs-batch-title")).to_have_text("Red Scribble")
+        expect(card.locator(".rs-batch-badge")).to_have_text("batch")
+        expect(card.locator(".rs-batch-app")).to_contain_text("3 scribbles")
+        expect(card.locator(".rs-batch-app")).to_contain_text("scribble-box")
+
+        # The screenshot affordance carries the path in its title.
+        shot = card.locator(".rs-batch-shot")
+        expect(shot).to_have_count(1)
+        expect(shot).to_have_attribute("title", "/abs/shot.png")
+
+        # One tile per scribble, with the expected labels (stroke count + notes).
+        tiles = card.locator(".rs-tile")
+        expect(tiles).to_have_count(3)
+        expect(tiles.nth(0)).to_contain_text("1 stroke")
+        expect(tiles.nth(1)).to_contain_text("I want an earthquake")
+        expect(tiles.nth(2)).to_contain_text("earthquake button")
+
+        # No detail card is showing until a tile is hovered; then the floating
+        # detail card appears on the body and lists the scribble's fields (the
+        # decoded anchor, the raw path). Showing/hiding is asserted on
+        # visibility, not presence: every tooltip in the workspace shares one
+        # bubble element on ``document.body`` (hoverTooltip.ts), and dismissing
+        # it hides that element rather than removing it -- so once a tile has
+        # been hovered, a hidden ``.rs-tip`` node stays in the DOM.
+        expect(page.locator(".rs-tip")).to_be_hidden()
+        tiles.nth(0).hover()
+        tip = page.locator(".rs-tip")
+        expect(tip).to_have_count(1)
+        expect(tip).to_be_visible()
+        expect(tip).to_contain_text("html > body > main")
+        expect(tip).to_contain_text("/abs/1.json")
+
+        # Moving off the tile hides the floating card again.
+        page.locator(".rs-batch-title").hover()
+        expect(page.locator(".rs-tip")).to_be_hidden()
+
+        # The truncated document did NOT become a card; it renders as a plain
+        # user bubble carrying its raw text.
+        bubble = page.locator(".message-user-bubble", has_text="red-scribble-feedback")
+        expect(bubble.first).to_be_visible()
 
 
 @pytest.mark.timeout(30, func_only=False)
@@ -1474,16 +1600,35 @@ def _drop_overlay_styles(page: Page) -> dict[str, Any] | None:
 
     Read as computed style rather than as markup because the whole question is
     what the user sees: whether the selection paints a region, and whether it
-    carries the pseudo-element that draws the insertion line. Its left edge
-    comes back too, since a line is only right if it is on the correct edge.
+    carries the pseudo-element that draws the insertion line. Its own edges come
+    back too, since a line is only right if it is on the correct edge.
+
+    When the overlay is over a tab, the seam that tab offers -- the edges a drop
+    would insert against -- is measured here as well, in the SAME layout pass.
+    Reading the overlay here and the tab through Playwright's ``bounding_box()``
+    would put a real comparison across two measuring systems: ``bounding_box()``
+    comes from CDP's box model and is whole-pixel, while ``getBoundingClientRect``
+    is exact, so the two disagree by a fraction of a pixel that has nothing to do
+    with where the line was drawn. dockview lays the overlay inside the tab's
+    border, so the seam is the tab's inner edge; that is what the line is meant
+    to sit on, and both numbers now come out of one measurement.
     """
     return page.evaluate(
         """() => {
             const el = document.querySelector('.dv-drop-target-selection');
             if (!el) return null;
+            // dockview slides the selection between targets over 70ms, so its rect
+            // mid-slide is a frame of the journey rather than the destination. Run
+            // those transitions to their end first and the rect read below is where
+            // the overlay lands -- which is the only thing the user is left looking
+            // at, and the only thing that can be asserted without racing a clock.
+            el.getAnimations().forEach((animation) => animation.finish());
             const style = getComputedStyle(el);
             const after = getComputedStyle(el, '::after');
             const box = el.getBoundingClientRect();
+            const tab = el.closest('.dv-tab');
+            const tabBox = tab && tab.getBoundingClientRect();
+            const tabStyle = tab && getComputedStyle(tab);
             return {
                 background: style.backgroundColor,
                 afterContent: after.content,
@@ -1496,9 +1641,54 @@ def _drop_overlay_styles(page: Page) -> dict[str, Any] | None:
                       : 'other',
                 left: box.left,
                 right: box.right,
+                seamLeft: tab ? tabBox.left + parseFloat(tabStyle.borderLeftWidth) : null,
+                seamRight: tab ? tabBox.right - parseFloat(tabStyle.borderRightWidth) : null,
+                tabMiddle: tab ? tabBox.left + tabBox.width / 2 : null,
             };
         }"""
     )
+
+
+# How far off its seam the insertion line may sit and still count as on it. The
+# line and the seam are measured in one layout pass, so anything beyond ordinary
+# sub-pixel slop means the line was drawn somewhere else -- and the thing it has
+# to be told apart from, a block over half the neighbouring tab, is half a tab
+# (~110px) away, so nothing hangs on the exact size of this.
+_SEAM_TOLERANCE_PX = 0.5
+
+
+def _overlay_edges(overlay: dict[str, Any]) -> tuple[Any, ...]:
+    """The part of a drop overlay that is still moving while it animates."""
+    return (overlay["side"], overlay["left"], overlay["right"])
+
+
+def _settled_drop_overlay_styles(page: Page) -> dict[str, Any]:
+    """The drop overlay once it has settled on the target under the pointer.
+
+    Two different things lag a pointer move, and only one of them is the
+    animation. ``_drop_overlay_styles`` already ends the slide before measuring,
+    so what is left to wait for is dockview deciding which target the pointer is
+    over at all -- until it has, this is still reporting the PREVIOUS target,
+    fully arrived and perfectly stable. Hence reading until two reads agree.
+
+    Sampling alone would not be enough without the finish: a loaded machine
+    stalls the slide itself, and a frozen mid-slide rect reads exactly like an
+    arrived one.
+    """
+    previous: dict[str, Any] | None = None
+
+    def _settled() -> dict[str, Any] | None:
+        nonlocal previous
+        current = _drop_overlay_styles(page)
+        is_settled = (
+            current is not None and previous is not None and _overlay_edges(current) == _overlay_edges(previous)
+        )
+        previous = current
+        return current if is_settled else None
+
+    overlay, _polls, _elapsed = poll_for_value(_settled, timeout=10.0, poll_interval=0.05)
+    assert overlay is not None, "the drop overlay never settled onto a target"
+    return overlay
 
 
 def _member_titles(layout_dir: Path) -> dict[str, str]:
@@ -2396,12 +2586,7 @@ def test_dropping_on_a_tab_draws_a_line_and_on_a_pane_draws_a_wash(tmp_path: Pat
         page.mouse.move(
             target_box["x"] + target_box["width"] * 0.2, target_box["y"] + target_box["height"] / 2, steps=25
         )
-        # The overlay animates between targets; let it arrive before reading it.
-        page.wait_for_timeout(400)
-        target_box = target_tab.bounding_box()
-        assert target_box is not None, "the target tab lost its box mid-drag"
-        tab_overlay = _drop_overlay_styles(page)
-        assert tab_overlay is not None, "no drop overlay appeared over the tab"
+        tab_overlay = _settled_drop_overlay_styles(page)
 
         # The selection itself paints nothing -- the line is the whole of it --
         # and the line sits against the tab's own left edge rather than halfway
@@ -2419,9 +2604,10 @@ def test_dropping_on_a_tab_draws_a_line_and_on_a_pane_draws_a_wash(tmp_path: Pat
             f"a drop onto a tab should pick a side, got {tab_overlay['side']}"
         )
         line_x = tab_overlay["left"] if tab_overlay["side"] == "left" else tab_overlay["right"]
-        seam_x = target_box["x"] if tab_overlay["side"] == "left" else target_box["x"] + target_box["width"]
-        assert abs(line_x - seam_x) <= 1, (
-            f"the {tab_overlay['side']} line should sit on that edge of the tab ({seam_x}), got {line_x}"
+        seam_x = tab_overlay["seamLeft"] if tab_overlay["side"] == "left" else tab_overlay["seamRight"]
+        assert abs(line_x - seam_x) <= _SEAM_TOLERANCE_PX, (
+            f"the {tab_overlay['side']} line should sit on that edge of the tab ({seam_x}), got {line_x} "
+            f"-- halfway across would be {tab_overlay['tabMiddle']}"
         )
 
         # The same drag over the pane body keeps the region wash, and grows no
@@ -2429,8 +2615,10 @@ def test_dropping_on_a_tab_draws_a_line_and_on_a_pane_draws_a_wash(tmp_path: Pat
         pane_box = page.locator(".dv-content-container").first.bounding_box()
         assert pane_box is not None, "the pane has no box"
         page.mouse.move(pane_box["x"] + pane_box["width"] * 0.15, pane_box["y"] + pane_box["height"] / 2, steps=25)
-        pane_overlay = _drop_overlay_styles(page)
-        assert pane_overlay is not None, "no drop overlay appeared over the pane"
+        # Settle here too: read mid-slide and this is still the TAB's overlay, which
+        # would read as a tab drop having grown a wash.
+        pane_overlay = _settled_drop_overlay_styles(page)
+        assert pane_overlay["seamLeft"] is None, "the pane overlay should not be inside a tab"
         assert pane_overlay["background"] != "rgba(0, 0, 0, 0)", "a pane drop should still show its region"
         assert pane_overlay["afterContent"] in ("none", ""), "a pane drop should not draw an insertion line"
         page.mouse.up()

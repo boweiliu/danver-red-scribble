@@ -1,0 +1,177 @@
+<!doctype html>
+<!--
+  REMINDER (Red Scribble demo surface): the Scribble Box exists to test Red
+  Scribble. Changes made to this file as the result of Red Scribble feedback
+  are for demo purposes only and are NEVER committed. Any such changes MUST be
+  reverted before any other commit is made. See the red-scribble-feedback skill.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scribble Box</title>
+  <style>
+    body {
+      margin: 0;
+      background: #faf7f2;
+      color: #2b2b2b;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    /* SVG landscape background: fixed behind everything, anchored to the
+       bottom of the viewport so the hills always rest on the horizon. */
+    .landscape-bg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .wrapper {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 4rem;
+    }
+    hr {
+      border: none;
+      border-top: 2px solid #58111a;
+      opacity: 0.35;
+      margin: 0 0 2rem;
+    }
+    .poem {
+      font-size: 1.125rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      /* Translucent panel keeps the poem readable over the landscape. */
+      background: rgba(250, 247, 242, 0.82);
+      border-radius: 10px;
+      padding: 1.75rem 2rem;
+      box-shadow: 0 10px 34px rgba(43, 26, 20, 0.14);
+      backdrop-filter: blur(2px);
+    }
+    .poem .indent {
+      display: inline-block;
+      width: 2.5rem;
+    }
+    .poem .first-stanza {
+      font-size: 1.6rem;
+      font-weight: bold;
+    }
+    .sparkle {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      font-size: 10px;
+      color: #d4a017;
+      text-shadow: 0 0 6px rgba(255, 215, 0, 0.8);
+      animation: sparkle-fade 700ms ease-out forwards;
+    }
+    @keyframes sparkle-fade {
+      0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--drift-x), var(--drift-y)) scale(0.3); }
+    }
+  </style>
+  {{ red_scribble_tag() }}
+</head>
+<body>
+  <!-- SVG landscape background (dusk hills under a warm sky), added per Red
+       Scribble feedback. preserveAspectRatio slices to fill the viewport and
+       anchors the horizon to the bottom edge. -->
+  <svg class="landscape-bg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice"
+       xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#3a4a7a"/>
+        <stop offset="42%" stop-color="#8a6d94"/>
+        <stop offset="72%" stop-color="#e6a06b"/>
+        <stop offset="100%" stop-color="#f7d6a8"/>
+      </linearGradient>
+      <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0%"  stop-color="#fff2c9" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="#fff2c9" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <!-- sky -->
+    <rect width="1440" height="900" fill="url(#sky)"/>
+    <!-- sun and its glow -->
+    <circle cx="1260" cy="360" r="230" fill="url(#sunGlow)"/>
+    <circle cx="1260" cy="360" r="88" fill="#ffdf9e"/>
+    <!-- reflected shimmer / distant haze -->
+    <ellipse cx="1260" cy="612" rx="360" ry="26" fill="#f7d6a8" opacity="0.4"/>
+    <!-- layered hills, back (lightest) to front (darkest) -->
+    <path d="M0 612 C 240 560, 460 596, 720 576 C 980 556, 1200 596, 1440 566 L 1440 900 L 0 900 Z" fill="#b98a7e" opacity="0.85"/>
+    <path d="M0 672 C 300 628, 520 672, 760 652 C 1010 632, 1230 684, 1440 648 L 1440 900 L 0 900 Z" fill="#8f5f66"/>
+    <path d="M0 742 C 260 706, 560 760, 840 736 C 1080 716, 1280 766, 1440 742 L 1440 900 L 0 900 Z" fill="#5f3a4a"/>
+    <path d="M0 820 C 320 792, 640 836, 960 812 C 1180 796, 1320 828, 1440 816 L 1440 900 L 0 900 Z" fill="#3a2432"/>
+  </svg>
+  <div class="wrapper">
+    <main>
+      <div class="poem"><span class="first-stanza">&rsquo;Twas brillig, and the slithy toves
+<span class="indent"></span>Did gyre and gimble in the wabe:
+All mimsy were the borogoves,
+<span class="indent"></span>And the mome raths outgrabe.</span>
+
+&ldquo;Beware the Jabberwock, my son!
+<span class="indent"></span>The jaws that bite, the claws that catch!
+Beware the Jubjub bird, and shun
+<span class="indent"></span>The frumious Bandersnatch!&rdquo;
+
+He took his vorpal sword in hand;
+<span class="indent"></span>Long time the manxome foe he sought&mdash;
+So rested he by the Tumtum tree
+<span class="indent"></span>And stood awhile in thought.
+
+And, as in uffish thought he stood,
+<span class="indent"></span>The Jabberwock, with eyes of flame,
+Came whiffling through the tulgey wood,
+<span class="indent"></span>And burbled as it came!
+
+One, two! One, two! And through and through
+<span class="indent"></span>The vorpal blade went snicker-snack!
+He left it dead, and with its head
+<span class="indent"></span>He went galumphing back.
+
+&ldquo;And hast thou slain the Jabberwock?
+<span class="indent"></span>Come to my arms, my beamish boy!
+O frabjous day! Callooh! Callay!&rdquo;
+<span class="indent"></span>He chortled in his joy.
+
+&rsquo;Twas brillig, and the slithy toves
+<span class="indent"></span>Did gyre and gimble in the wabe:
+All mimsy were the borogoves,
+<span class="indent"></span>And the mome raths outgrabe.</div>
+    </main>
+  </div>
+  <script>
+    // REMINDER (Red Scribble demo surface): Red Scribble feedback changes to
+    // this page are demo-only and are NEVER committed; revert them before any
+    // other commit.
+    //
+    // Light sparkle effect: small gold sparks trail the mouse, drift a little,
+    // and fade out. Throttled so the page stays light.
+    (function () {
+      "use strict";
+      var lastSpawn = 0;
+      var SPAWN_INTERVAL_MS = 40;
+      document.addEventListener("mousemove", function (event) {
+        var now = performance.now();
+        if (now - lastSpawn < SPAWN_INTERVAL_MS) {
+          return;
+        }
+        lastSpawn = now;
+        var sparkle = document.createElement("span");
+        sparkle.className = "sparkle";
+        sparkle.textContent = "✦";
+        sparkle.style.left = event.clientX + (Math.random() * 12 - 6) + "px";
+        sparkle.style.top = event.clientY + (Math.random() * 12 - 6) + "px";
+        sparkle.style.setProperty("--drift-x", (Math.random() * 24 - 12) + "px");
+        sparkle.style.setProperty("--drift-y", (Math.random() * 16 + 6) + "px");
+        sparkle.addEventListener("animationend", function () {
+          sparkle.remove();
+        });
+        document.body.appendChild(sparkle);
+      });
+    })();
+  </script>
+</body>
+</html>

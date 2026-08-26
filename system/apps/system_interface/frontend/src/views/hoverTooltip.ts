@@ -34,10 +34,25 @@ const TOOLTIP_GAP = 6;
 const TOOLTIP_MARGIN = 6;
 
 export interface HoverTooltip {
-  /** Set the text shown on hover, or ``null`` to disable the tooltip. */
+  /** Set the plain text shown on hover, or ``null`` to disable the tooltip. */
   setText(text: string | null): void;
+  /** Set a rich DOM node shown on hover, or ``null`` to disable the tooltip. The
+   *  node is adopted by the shared bubble; the caller keeps no reference to it.
+   *  (Used by the dormant Red Scribble detail card -- see red-scribble-card.ts.) */
+  setContent(node: Node | null): void;
   /** Remove listeners and any visible bubble. */
   dispose(): void;
+}
+
+export interface HoverTooltipOptions {
+  /** CSS class on the shared bubble while this tooltip is shown. Defaults to
+   *  ``minds-tooltip`` (the workspace tooltip look); a rich card can ask for its
+   *  own (e.g. ``rs-tip``). */
+  className?: string;
+  /** ``center`` (default) pins the bubble centered under the target; ``left``
+   *  pins its left edge to the target's left edge, clamped to the viewport --
+   *  used by a wider rich-content card. */
+  align?: "center" | "left";
 }
 
 /** The part of a ``DOMRect`` the placement needs. */
@@ -115,9 +130,34 @@ function dropTooltip(): void {
   hideBubble();
 }
 
-function showBubble(target: Element, text: string): void {
+/** What a trigger wants shown: exactly one of ``text``/``content`` is set, plus
+ *  the bubble class and alignment the attachment asked for. */
+interface BubbleContent {
+  text: string | null;
+  content: Node | null;
+  className: string;
+  align: "center" | "left";
+}
+
+/** Left-anchored placement (for a wide rich card): the bubble's left edge tracks
+ *  the target's left edge, below it with the standard gap, clamped to the
+ *  viewport. Distinct from ``placeTooltip``'s centered/flip-above behaviour. */
+function placeTooltipLeft(anchor: TooltipAnchor, bubble: TooltipSize, viewport: TooltipSize): TooltipPosition {
+  const maxLeft = Math.max(TOOLTIP_MARGIN, viewport.width - bubble.width - TOOLTIP_MARGIN);
+  return {
+    left: Math.min(Math.max(TOOLTIP_MARGIN, anchor.left), maxLeft),
+    top: anchor.bottom + TOOLTIP_GAP,
+  };
+}
+
+function showBubble(target: Element, payload: BubbleContent): void {
   const element = ensureBubble();
-  element.textContent = text;
+  element.className = payload.className;
+  if (payload.content !== null) {
+    element.replaceChildren(payload.content);
+  } else {
+    element.textContent = payload.text;
+  }
   // Measure at the natural width: clear the width a previous show fixed, and
   // park the bubble at the origin first, since a stale ``left`` would cap the
   // shrink-to-fit width at (viewport - left) and wrap the label.
@@ -131,10 +171,10 @@ function showBubble(target: Element, text: string): void {
   // content a fraction short and wraps the last word. Ceil instead.
   const measured = element.getBoundingClientRect();
   const size = { width: Math.ceil(measured.width), height: Math.ceil(measured.height) };
-  const position = placeTooltip(target.getBoundingClientRect(), size, {
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
+  const viewport = { width: window.innerWidth, height: window.innerHeight };
+  const anchor = target.getBoundingClientRect();
+  const position =
+    payload.align === "left" ? placeTooltipLeft(anchor, size, viewport) : placeTooltip(anchor, size, viewport);
   // Fix the width so the bubble does not reflow if the viewport later changes.
   element.style.width = `${size.width}px`;
   element.style.left = `${position.left}px`;
@@ -155,10 +195,17 @@ function wireWindowListeners(): void {
   window.addEventListener("blur", dropTooltip);
 }
 
-export function attachHoverTooltip(target: Element): HoverTooltip {
+export function attachHoverTooltip(target: Element, options: HoverTooltipOptions = {}): HoverTooltip {
+  const className = options.className ?? "minds-tooltip";
+  const align = options.align ?? "center";
+  // Exactly one of these is set at a time; the other is null.
   let text: string | null = null;
+  let content: Node | null = null;
 
   wireWindowListeners();
+
+  const hasPayload = (): boolean => text !== null || content !== null;
+  const payload = (): BubbleContent => ({ text, content, className, align });
 
   const dismiss = (): void => {
     if (pendingFor === target) {
@@ -173,13 +220,13 @@ export function attachHoverTooltip(target: Element): HoverTooltip {
   // focus, which skips the delay. Either way whatever else was queued loses.
   const showNow = (): void => {
     cancelPending();
-    if (text !== null) {
-      showBubble(target, text);
+    if (hasPayload()) {
+      showBubble(target, payload());
     }
   };
 
   const onEnter = (): void => {
-    if (text === null) {
+    if (!hasPayload()) {
       return;
     }
     cancelPending();
@@ -201,14 +248,26 @@ export function attachHoverTooltip(target: Element): HoverTooltip {
   target.addEventListener("focus", onFocus);
   target.addEventListener("blur", dismiss);
 
+  // Re-render in place when the payload changes: drop the bubble when emptied,
+  // else refresh it if this trigger's bubble is the one currently shown.
+  const refresh = (): void => {
+    if (!hasPayload()) {
+      dismiss();
+    } else if (shownFor === target) {
+      showBubble(target, payload());
+    }
+  };
+
   return {
     setText(next: string | null): void {
       text = next;
-      if (text === null) {
-        dismiss();
-      } else if (shownFor === target) {
-        showBubble(target, text);
-      }
+      content = null;
+      refresh();
+    },
+    setContent(node: Node | null): void {
+      content = node;
+      text = null;
+      refresh();
     },
     dispose(): void {
       target.removeEventListener("mouseenter", onEnter);

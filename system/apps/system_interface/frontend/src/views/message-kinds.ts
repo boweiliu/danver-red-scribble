@@ -79,6 +79,14 @@ export enum UserMessageKind {
   /** A skill expansion whose body is relocated into its `Tool: Skill` block. */
   SkillExpansion = "skill-expansion",
   /**
+   * A Red Scribble feedback message -- one `<red-scribble-feedback>` document
+   * routing in-app UI feedback (strokes, typed notes, voice notes) to this chat.
+   * Rendered as a batch card of scribble tiles on the user rail, opening a new
+   * turn like a genuine prompt (it IS a user turn, just structured). See
+   * red-scribble.ts / red-scribble-card.ts.
+   */
+  RedScribbleFeedback = "red-scribble-feedback",
+  /**
    * A message with no visual at all: the seeded `/welcome`, and -- via the
    * general `isMeta` rule in classifyUserMessage -- every framework-injected,
    * model-only message that no explicit detector surfaces (the resume-
@@ -136,6 +144,17 @@ export const KIND_SPEC: Record<UserMessageKind, KindSpec> = {
       "No row of its own on the user rail. Its SKILL.md body is relocated into " +
       "the preceding assistant-side 'Tool: Skill' tool-call block, where it shows " +
       "as that block's expandable output (see buildToolResultsWithSkillExpansions).",
+  },
+  [UserMessageKind.RedScribbleFeedback]: {
+    rail: Rail.User,
+    boundary: true,
+    netVisual:
+      "A batch card on the user rail (bordered, red left accent) opening a new " +
+      "turn: a header ('Red Scribble', a batch/live mode badge, 'N scribbles · " +
+      "app', an optional screenshot affordance) above a wrapping row of compact " +
+      "scribble tiles (kind glyph + short label). Hovering a tile reveals a " +
+      "floating detail card. Replaces the raw tagged document that would " +
+      "otherwise show as a plain bubble.",
   },
   [UserMessageKind.Hidden]: {
     rail: Rail.None,

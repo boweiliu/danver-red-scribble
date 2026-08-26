@@ -1,0 +1,24 @@
+[project]
+name = "scribble-box"
+version = "0.1.0"
+description = "A scratchpad page for testing Red Scribble feedback (demo-only; Red Scribble changes here are never committed)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "flask-sock>=0.7",
+    "werkzeug>=3.0",
+    # The Red Scribble opt-in: the helper that renders the plug-in's <script> tag needs to look
+    # up Red Scribble's (deliberately unguessable) origin in the service registry.
+    "red-scribble",
+]
+
+[project.scripts]
+scribble-box = "scribble_box.runner:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scribble_box"]

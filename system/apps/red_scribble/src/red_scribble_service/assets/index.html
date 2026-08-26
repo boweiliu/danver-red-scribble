@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red Scribble</title>
+<style>
+  :root {
+    --paper: #faf9f7;
+    --ink: #16151a;
+    --red: #e11d2a;
+    --muted: #7c7a85;
+    --rule: #e4e1dc;
+    --spent: #b8b5bd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      linear-gradient(var(--rule) 1px, transparent 1px) 0 0 / 100% 28px,
+      var(--paper);
+    color: var(--ink);
+    font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sheet { max-width: 760px; margin: 0 auto; padding: 40px 24px 96px; }
+
+  header { display: flex; align-items: flex-start; gap: 16px; padding-bottom: 20px; }
+  header svg { width: 44px; height: 44px; flex: 0 0 auto; }
+  h1 {
+    margin: 2px 0 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .state {
+    margin: 6px 0 0;
+    font-size: 26px;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    font-weight: 650;
+  }
+  .state em { font-style: normal; color: var(--red); }
+  .detail { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .detail code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    color: var(--ink);
+  }
+
+  h2 {
+    margin: 36px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+  li {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  li.closed { color: var(--spent); }
+  li.closed .mark { opacity: .35; }
+
+  .mark {
+    flex: 0 0 auto;
+    width: 76px;
+    height: 52px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: #fff;
+    overflow: hidden;
+  }
+  .mark svg { display: block; width: 100%; height: 100%; }
+  .mark.note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: .08em;
+  }
+
+  .body { min-width: 0; flex: 1; }
+  .note-text {
+    margin: 0 0 4px;
+    font-size: 15px;
+    color: inherit;
+    overflow-wrap: anywhere;
+  }
+  .meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .meta .id { color: var(--ink); }
+  li.closed .meta .id { color: inherit; }
+  a { color: var(--red); text-decoration: none; border-bottom: 1px solid transparent; }
+  a:hover, a:focus-visible { border-bottom-color: currentColor; }
+  a:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+
+  .empty { padding: 20px 0 0; color: var(--muted); max-width: 46ch; }
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <header>
+    {{ logo }}
+    <div>
+      <h1>Red Scribble</h1>
+      {% if is_on %}
+        <p class="state">On, sending to <em>{{ target_name }}</em></p>
+        <p class="detail">
+          {% if mode == "live" %}Live: each scribble goes out a couple of seconds after you draw it.
+          {% else %}Batch: scribbles wait until you long-press the red circle and choose Send.{% endif %}
+        </p>
+      {% else %}
+        <p class="state">Off</p>
+        <p class="detail">Ask a chat to turn it on, or run <code>red-scribble on --agent &lt;chat id&gt;</code>.</p>
+      {% endif %}
+    </div>
+  </header>
+
+  <h2>Scribbles &middot; {{ open_count }} open of {{ total_count }}</h2>
+
+  {% if scribbles %}
+  <ul>
+    {% for scribble in scribbles %}
+    <li class="{{ 'closed' if scribble.is_closed else 'open' }}">
+      <div class="mark {{ '' if scribble.stroke_path else 'note' }}">
+        {% if scribble.stroke_path %}
+          <svg viewBox="{{ scribble.stroke_viewbox }}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <path d="{{ scribble.stroke_path }}" fill="none" stroke="#e11d2a"
+                  stroke-width="{{ scribble.stroke_width }}" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {% else %}{{ scribble.kind }}{% endif %}
+      </div>
+      <div class="body">
+        {% if scribble.text %}<p class="note-text">{{ scribble.text }}</p>{% endif %}
+        <div class="meta">
+          <span class="id">{{ scribble.id }}</span>
+          <span>{{ scribble.kind }}</span>
+          <span>{{ scribble.app or "unknown app" }}</span>
+          <span>{{ scribble.created_at }}</span>
+          {% if scribble.is_closed %}<span>closed</span>{% endif %}
+          {% if scribble.raw_href %}<a href="{{ scribble.raw_href }}">raw</a>{% endif %}
+          {% if scribble.screenshot_href %}<a href="{{ scribble.screenshot_href }}">screenshot</a>{% endif %}
+          {% for audio_href in scribble.audio_hrefs %}<a href="{{ audio_href }}">audio</a>{% endfor %}
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="empty">Nothing yet. Open an app that has Red Scribble switched on, click the red circle
+    in the corner, and draw on whatever you want changed.</p>
+  {% endif %}
+
+</main>
+</body>
+</html>

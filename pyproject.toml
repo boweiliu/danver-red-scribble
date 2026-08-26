@@ -17,6 +17,8 @@ dependencies = [
     "litellm>=1.88.1",
     "browser",
     "eval-worker",
+    "scribble-box",
+    "red-scribble-service",
 ]
 
 [dependency-groups]
@@ -83,6 +85,7 @@ eval-worker = { workspace = true }
 mngr-cli-contract = { workspace = true }
 tk-command-parsing = { workspace = true }
 oom-priority = { workspace = true }
+red-scribble = { workspace = true }
 browser = { workspace = true }
 imbue-common = { path = "system/vendor/mngr/libs/imbue_common", editable = true }
 imbue-mngr = { path = "system/vendor/mngr/libs/mngr", editable = true }
@@ -91,6 +94,8 @@ imbue-mngr-codex = { path = "system/vendor/mngr/libs/mngr_codex", editable = tru
 imbue-mngr-pi-coding = { path = "system/vendor/mngr/libs/mngr_pi_coding", editable = true }
 resource-guards = { path = "system/vendor/mngr/libs/resource_guards", editable = true }
 concurrency-group = { path = "system/vendor/mngr/libs/concurrency_group", editable = true }
+scribble-box = {workspace = true}
+red-scribble-service = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["."]

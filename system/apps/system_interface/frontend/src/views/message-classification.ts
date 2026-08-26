@@ -7,12 +7,23 @@
  * as the event's `display` / `display_label` / `display_body` / `resolution`
  * fields (and a tool call's `display`). This module only MAPS those fields onto
  * the frontend's `UserMessageKind` catalogue (see message-kinds.ts for how each
- * kind renders) -- it never sniffs message text or tool input, and adding a new
- * specially-rendered message is a backend rule, not a frontend regex.
+ * kind renders). For anything a harness emits, that is the whole story: adding a
+ * new specially-rendered message is a backend rule, not a frontend regex.
+ *
+ * ONE kind is the exception, and it is deliberate: Red Scribble feedback. It is
+ * workspace-local -- it comes from this workspace's own scribble library, not
+ * from any harness -- so the shared backend detector table has no rule for it and
+ * would have to grow one for a message it never sees elsewhere. It is instead
+ * recognised here by parsing the message content (red-scribble.ts is the single
+ * parse authority; the sniff is anchored to the `<red-scribble-feedback>` root
+ * tag, so prose that merely quotes the tag never matches). Do not read that as
+ * licence to add more content sniffing: a harness marker belongs in the backend
+ * table.
  */
 
 import type { ToolCall, UserMessageEvent } from "../models/Response";
 import { KIND_SPEC, Rail, UserMessageKind } from "./message-kinds";
+import { parseRedScribbleFeedback } from "./red-scribble";
 
 /** The slice of a user_message the classification reads. */
 export type ClassifiableUserMessage = Pick<UserMessageEvent, "content" | "display" | "display_label" | "display_body">;
@@ -41,6 +52,15 @@ export interface UserMessageClass {
  */
 export function classifyUserMessage(event: ClassifiableUserMessage): UserMessageClass {
   const content = event.content || "";
+  // Red Scribble feedback is a workspace-local message kind the backend detector
+  // table (harnesses/message_display.py) does not know about, so it is recognised
+  // here on the frontend: a well-formed `<red-scribble-feedback>` document renders
+  // as the batch card, a malformed one falls through to the backend-driven mapping
+  // below. The proxy seam that once delivered these went dormant with the v0.4.1
+  // forwarding refactor; this keeps the render path intact for the redesign.
+  if (parseRedScribbleFeedback(content) !== null) {
+    return { kind: UserMessageKind.RedScribbleFeedback, label: null, body: content };
+  }
   switch (event.display) {
     case "hidden":
       return { kind: UserMessageKind.Hidden, label: null, body: content };

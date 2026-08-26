@@ -16,6 +16,8 @@ import { parseMessageAttachments } from "../models/attachments";
 import type { UserMessageEvent } from "../models/Response";
 import { classifyUserMessage } from "./message-classification";
 import { KIND_SPEC, Rail, UserMessageKind } from "./message-kinds";
+import { parseRedScribbleFeedback } from "./red-scribble";
+import { renderRedScribbleBatch } from "./red-scribble-card";
 
 /** The collapsed, expandable "▸ <label>" chip used for every `SystemChip` kind
  *  (Stop hook / browser fleet / task-notification). Identical chrome regardless
@@ -59,6 +61,17 @@ export function StableUserMessage(): m.Component<{ event: UserMessageEvent }> {
 
       if (cls.kind === UserMessageKind.SystemChip) {
         return renderSystemChip(cls.label ?? "System message", cls.body);
+      }
+
+      // Red Scribble feedback renders as a batch card. Re-parse the raw document
+      // (red-scribble.ts is the single parse authority); if it somehow fails
+      // here after classifying, fall through to the plain bubble rather than
+      // showing nothing.
+      if (cls.kind === UserMessageKind.RedScribbleFeedback) {
+        const batch = parseRedScribbleFeedback(cls.body);
+        if (batch !== null) {
+          return renderRedScribbleBatch(batch);
+        }
       }
 
       const bubbleChildren: m.Children[] = [];

@@ -62,6 +62,11 @@ const STROKE_PATHS = {
   search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
   "external-link":
     '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M19 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6"/>',
+  // The three Red Scribble scribble-kind glyphs shown on a batch card's tiles: a
+  // freehand squiggle (stroke), a microphone (voice), and stacked lines (text).
+  "scribble-stroke": '<path d="M3 17 C 8 7, 12 21, 21 6"/>',
+  "scribble-voice": '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11 a7 7 0 0 0 14 0 M12 18 v3"/>',
+  "scribble-text": '<path d="M4 6 h16 M4 12 h16 M4 18 h9"/>',
   // Pencil, on the tab menu's Rename row and the project switcher's per-row
   // settings control.
   edit: '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',

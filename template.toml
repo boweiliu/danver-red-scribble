@@ -1,0 +1,53 @@
+# Machine-readable manifest for this template. The sibling
+# template.md holds the prose, the Requirements list, and the two
+# append-only history logs; this file is authoritative for everything
+# below. Both are generated together -- validate_template.py fails if
+# they disagree.
+format = "v2"
+
+[template]
+slug = "red-scribble"
+title = "Red Scribble"
+description = "Scribble, type, or speak UI feedback directly on any app in your workspace; it routes to your chat agent as one batched, rendered card per send."
+thumbnail = "template.svg"
+version = "v3"
+
+# How this template is DERIVED from the workspace it came from. An
+# update re-runs this recipe rather than diffing two repos, which is what
+# keeps an exclusion excluded even though the thing still exists upstream.
+[recipe]
+include = ["system/libs/red_scribble", "system/apps/red_scribble", "system/apps/scribble_box", ".agents/skills/red-scribble-feedback", ".agents/skills/enable-red-scribble", "system/supervisord.conf", "pyproject.toml", "uv.lock", "system/apps/system_interface/pyproject.toml", "system/apps/system_interface/imbue/system_interface/test_e2e.py", "system/apps/system_interface/frontend/src/style.css", "system/apps/system_interface/frontend/src/views/hoverTooltip.ts", "system/apps/system_interface/frontend/src/views/icons.ts", "system/apps/system_interface/frontend/src/views/message-classification.ts", "system/apps/system_interface/frontend/src/views/message-kinds.ts", "system/apps/system_interface/frontend/src/views/user-message-display.ts", "system/apps/system_interface/frontend/src/views/red-scribble.ts", "system/apps/system_interface/frontend/src/views/red-scribble.test.ts", "system/apps/system_interface/frontend/src/views/red-scribble-card.ts", "system/apps/system_interface/frontend/src/views/red-scribble-card.test.ts"]
+data_include = []
+exclude = [
+  ".agents/skills/de-complect (third-party skill install, not part of Red Scribble)",
+  ".agents/skills/crispy-comments (third-party skill install, not part of Red Scribble)",
+  "data/.apps/red_scribble runtime state (captured scribbles, screenshots, voice audio, and the target-chat config)",
+  "system/apps/system_interface beyond the chat-card rendering files listed above",
+]
+modification_rules = [
+  "clear the recorded target chat so a fresh mind starts with Red Scribble off, rather than pointing at a chat that does not exist in it",
+]
+
+# Everything an adopter must deal with before this is really theirs.
+# One list -- but each entry's KIND says how it is handled, because the
+# two are handled at different times by different mechanisms:
+#
+#   permission / secret / llm = ACTIVATION. The adopting agent acts on
+#   these FIRST and BY ITSELF, initiating each latchkey permission
+#   request before asking the user anything. Every one of them must have
+#   a matching requires_ line in template.md and vice versa -- the
+#   validator checks that, because an adopter once never got prompted
+#   for a permission the app needed.
+#
+#   adaptation = worked through INTERACTIVELY with the user afterwards.
+#   Prose on both sides, so it is not cross-checked.
+#
+[requirements]
+
+[[requirements.adaptation]]
+summary = "an app only gets Red Scribble once it carries the one-line opt-in"
+resolution = "run the enable-red-scribble skill for each app you want to scribble on; the included Scribble Box is already opted in"
+
+[environment]
+apt = []
+env_d_units = []

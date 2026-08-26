@@ -1,0 +1,29 @@
+[project]
+name = "red-scribble"
+version = "0.1.0"
+description = "Injected browser plug-in for scribble/type/voice UI feedback, routed to a mind's agent"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "imbue-common",
+    "imbue-mngr",
+    # Only ``embed.py`` needs these: the one-line opt-in is a Jinja helper, because every app in
+    # this workspace family is a Flask app. Everything else here stays framework-neutral.
+    "flask>=3.0",
+    "markupsafe>=2.1",
+]
+
+[project.scripts]
+red-scribble = "red_scribble.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+artifacts = [
+    "src/red_scribble/assets/**",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/red_scribble"]
