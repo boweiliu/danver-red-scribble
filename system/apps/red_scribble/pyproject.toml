@@ -3,7 +3,7 @@ name = "red-scribble-service"
 version = "0.1.0"
 description = "Serves the Red Scribble plug-in, config, and feedback endpoints on their own workspace origin"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "flask>=3.0",
     "flask-sock>=0.7",
@@ -22,3 +22,19 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/red_scribble_service"]
+
+[tool.uv.sources]
+red-scribble = { path = "../../libs/red_scribble", editable = true }
+
+[dependency-groups]
+dev = [
+    "imbue-common[testing]",
+    "playwright==1.58.0",
+    "ty==0.0.85",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+
+# Makes this directory ty's project; without a [tool.ty] table ty keeps searching upward.
+[tool.ty]

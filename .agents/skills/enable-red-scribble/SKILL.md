@@ -30,7 +30,7 @@ The user usually names it ("let me scribble on the dashboard"). If they did not,
 candidates and ask which one -- do not guess:
 
 ```bash
-uv run .agents/skills/enable-red-scribble/scripts/opt_in_app.py --list
+uv run --no-sync .agents/skills/enable-red-scribble/python/enable_red_scribble_skill/opt_in_app.py --list
 ```
 
 Each line is an app, whether it is already opted in, and the page the tag goes in. An app that
@@ -43,7 +43,7 @@ ask, then put `{{ red_scribble_tag() }}` in that page's `<head>` yourself.
 ## Step 2 -- opt the app in
 
 ```bash
-uv run .agents/skills/enable-red-scribble/scripts/opt_in_app.py <app>
+uv run --no-sync .agents/skills/enable-red-scribble/python/enable_red_scribble_skill/opt_in_app.py <app>
 ```
 
 This declares the app's dependency on `red-scribble` and puts `{{ red_scribble_tag() }}` in its
@@ -65,17 +65,19 @@ def index() -> Response:
     return Response(render_template_string(_PAGE_PATH.read_text()), mimetype="text/html")
 ```
 
-Then pick up the new dependency:
+Then pick up the new dependency. The app is its own uv project, so lock and sync it, not the
+root workspace (`<app_dir>` is the directory of the `pyproject.toml` the `dependency` line
+named):
 
 ```bash
-uv sync --all-packages
+uv lock --project system/apps/<app_dir> && uv sync --project system/apps/<app_dir>
 ```
 
 ## Step 3 -- point Red Scribble at this chat
 
 ```bash
-red-scribble on --agent "$MNGR_AGENT_ID"          # add --mode live for rapid prototyping
-red-scribble status
+uv run --no-sync --project system/libs/red_scribble red-scribble on --agent "$MNGR_AGENT_ID"          # add --mode live for rapid prototyping
+uv run --no-sync --project system/libs/red_scribble red-scribble status
 ```
 
 `$MNGR_AGENT_ID` is the chat running this, which is what the user means by "send it to me here".
@@ -106,7 +108,7 @@ see `system/libs/red_scribble/README.md`.
 ## Step 5 -- put it in front of the user
 
 ```bash
-python3 system/scripts/layout.py refresh <app>     # or `open <app>` if no tab is showing it
+uv run --no-sync workspace-layout refresh --app <app>   # or `open <app>` if no window is showing it
 ```
 
 Then confirm the red circle is there before telling the user it is on. Fetching the page and
@@ -132,22 +134,22 @@ Do not describe the plumbing.
 ## Turning it off
 
 ```bash
-red-scribble off        # feedback stops immediately; the circle disappears from every app
+uv run --no-sync --project system/libs/red_scribble red-scribble off        # feedback stops immediately; the circle disappears from every app
 ```
 
 That is usually all the user means by "turn it off" -- the opt-in can stay, because the tag
 renders nothing while Red Scribble is off. To take the code opt-in back out as well:
 
 ```bash
-uv run .agents/skills/enable-red-scribble/scripts/opt_in_app.py <app> --remove
-uv sync --all-packages
+uv run --no-sync .agents/skills/enable-red-scribble/python/enable_red_scribble_skill/opt_in_app.py <app> --remove
+uv lock --project system/apps/<app_dir> && uv sync --project system/apps/<app_dir>
 supervisorctl restart <app>
-python3 system/scripts/layout.py refresh <app>
+uv run --no-sync workspace-layout refresh --app <app>
 ```
 
 ## When something is not right
 
-- **No red circle.** Check `red-scribble status` (it must name a target chat), then that the
+- **No red circle.** Check `red-scribble status` (run as in step 3; it must name a target chat), then that the
   page actually contains `plugin.js` (step 5), then that the `red-scribble` service is running.
 - **The circle is there but nothing arrives.** Look at the app's own page in the browser console
   for a blocked request: Red Scribble only answers pages on this workspace's own origins.

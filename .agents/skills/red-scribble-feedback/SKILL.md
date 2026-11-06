@@ -39,11 +39,11 @@ the full playbook; you only need to read it once per session.
 ## After a live edit, reload so the diff renders (live mode)
 
 In live mode the point is a tight, visible loop, so when you finish an edit **reload the app** --
-don't leave the user staring at stale output. The `App:` field names the service; reload its
-iframe(s):
+don't leave the user staring at stale output. The `App:` field names the service; reload every
+page of it:
 
 ```
-uv run python system/scripts/layout.py refresh service:<app>
+uv run --no-sync workspace-layout refresh --app <app>
 ```
 
 If the app needs a build step or a service restart to serve the change, do that first, then refresh.
@@ -100,8 +100,8 @@ Every scribble has a stable **scribble id**. When you have acted on it -- or dec
 above, that there is nothing clear to act on -- close it so it stops rendering on the user's screen:
 
 ```
-uv run red-scribble close <id>            # from the repo root; several ids allowed
-uv run red-scribble list                  # show open scribbles
+uv run --no-sync --project system/libs/red_scribble red-scribble close <id>            # from the repo root; several ids allowed
+uv run --no-sync --project system/libs/red_scribble red-scribble list                  # show open scribbles
 ```
 
 Closing an actioned scribble is how "draw an X on a button -> delete it -> the X disappears" works.

@@ -127,8 +127,8 @@ def create_app(deps: RedScribbleDeps) -> Flask:
         """The plug-in's own endpoints: its code, its config, its scribbles, and its feedback."""
         origin = request.headers.get("Origin")
         # Authorized against the service registry, not against this service's own host: the
-        # forwarder rewrites Host to ``localhost:8082``, so we cannot recognise our own siblings
-        # by comparing origin families.
+        # forwarder rewrites Host to this service's own ``localhost:<port>``, so we cannot
+        # recognise our own siblings by comparing origin families.
         is_allowed = is_allowed_origin(origin, apps_registry_path())
 
         # Pre-flight: answer for an allowed origin, refuse anything else outright.

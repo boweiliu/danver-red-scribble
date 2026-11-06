@@ -52,10 +52,18 @@ _WORKSPACE_COORDINATE_LABEL: Final = re.compile(r"^(?:host|agent)-[a-f0-9]+$", r
 
 
 def _repo_root() -> Path:
-    """Walk up from cwd to the workspace root, falling back to cwd."""
+    """Walk up from cwd to the workspace root, falling back to cwd.
+
+    ``system/supervisord.conf`` is the marker: it is the config the workspace's
+    programs all run under, so the root it finds is the one every program --
+    ``forward_port.py``, which writes the registry this module reads, included --
+    runs from. (A script was the marker before; ``system/scripts/layout.py`` went
+    when the desktop shell replaced it with the ``workspace-layout`` package, at
+    which point every walk fell through to the cwd fallback silently.)
+    """
     here = Path.cwd()
     for candidate in (here, *here.parents):
-        if (candidate / "system" / "scripts" / "layout.py").exists():
+        if (candidate / "system" / "supervisord.conf").exists():
             return candidate
     return here
 

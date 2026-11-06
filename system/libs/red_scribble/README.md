@@ -72,9 +72,9 @@ break the app embedding it.
 **Turning it on.** Red Scribble is off until a chat claims it:
 
 ```
-red-scribble on --agent <chat's agent id> [--mode batch|live]   # feedback routes to that chat
-red-scribble off
-red-scribble status
+uv run --no-sync --project system/libs/red_scribble red-scribble on --agent <chat's agent id> [--mode batch|live]   # feedback routes to that chat
+uv run --no-sync --project system/libs/red_scribble red-scribble off
+uv run --no-sync --project system/libs/red_scribble red-scribble status
 ```
 
 Then click the red circle in the corner of the app to start scribbling, click it again to use

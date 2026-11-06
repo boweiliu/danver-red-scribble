@@ -20,6 +20,7 @@ browser, the two servers, and the registry that makes them siblings are assemble
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from playwright.sync_api import Page
@@ -108,7 +109,7 @@ def test_the_stroke_reaches_the_target_chat_credited_to_the_app_it_was_drawn_on(
     assert 'app="scribble-box"' in message
 
 
-def _wait_for_packets(storage_dir: Path, timeout_seconds: float = 30.0) -> list[dict[str, object]]:
+def _wait_for_packets(storage_dir: Path, timeout_seconds: float = 30.0) -> list[dict[str, Any]]:
     """Every packet the service has persisted, once at least one has landed.
 
     Live mode gathers for a couple of seconds before sending, and the send captures a screenshot
@@ -116,7 +117,7 @@ def _wait_for_packets(storage_dir: Path, timeout_seconds: float = 30.0) -> list[
     """
     packets_dir = storage_dir / "packets"
 
-    def persisted() -> list[dict[str, object]] | None:
+    def persisted() -> list[dict[str, Any]] | None:
         files = sorted(packets_dir.glob("*.json")) if packets_dir.is_dir() else []
         return [json.loads(path.read_text()) for path in files] if files else None
 

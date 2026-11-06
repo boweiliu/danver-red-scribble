@@ -229,7 +229,9 @@ def test_no_endpoint_that_touches_the_users_state_answers_a_foreign_origin(
     for response in refusals:
         assert response.status_code == 403
         assert b"agent-1" not in response.data
-    assert client.get("/config", headers=_headers(_APP_ORIGIN)).json["target_agent_id"] == "agent-1"
+    config = client.get("/config", headers=_headers(_APP_ORIGIN)).json
+    assert config is not None
+    assert config["target_agent_id"] == "agent-1"
 
 
 def test_the_openly_served_subpaths_are_front_end_code_and_nothing_else(

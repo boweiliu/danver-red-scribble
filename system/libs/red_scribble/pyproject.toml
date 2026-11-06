@@ -3,7 +3,7 @@ name = "red-scribble"
 version = "0.1.0"
 description = "Injected browser plug-in for scribble/type/voice UI feedback, routed to a mind's agent"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "imbue-common",
     "imbue-mngr",
@@ -27,3 +27,13 @@ artifacts = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/red_scribble"]
+
+[dependency-groups]
+dev = ["imbue-common[testing]"]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+
+[tool.uv.sources]
+imbue-common = { git = "https://github.com/imbue-ai/mngr", rev = "e6ab2a4966f46511e9a45bb762c47a2aa36858c6", subdirectory = "libs/imbue_common" }
+imbue-mngr = { git = "https://github.com/imbue-ai/mngr", rev = "e6ab2a4966f46511e9a45bb762c47a2aa36858c6", subdirectory = "libs/mngr" }

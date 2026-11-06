@@ -1,6 +1,6 @@
 """Tests for ``opt_in_app.py``.
 
-Run via: ``uv run pytest .agents/skills/enable-red-scribble/scripts/opt_in_app_test.py``
+Run via: ``uv run --no-sync pytest .agents/skills/enable-red-scribble/python``
 
 The property that matters is idempotence: the skill is the thing a user re-runs when they are
 not sure whether Red Scribble is already on, so a second application must not duplicate the tag,
@@ -10,18 +10,12 @@ rather than touching a real one.
 
 from __future__ import annotations
 
-import importlib.util
-import sys
+import tomllib
 from pathlib import Path
 
 import pytest
 
-_SCRIPT = Path(__file__).parent / "opt_in_app.py"
-_spec = importlib.util.spec_from_file_location("opt_in_app", _SCRIPT)
-assert _spec is not None and _spec.loader is not None
-opt_in_app = importlib.util.module_from_spec(_spec)
-sys.modules[_spec.name] = opt_in_app
-_spec.loader.exec_module(opt_in_app)
+from enable_red_scribble_skill import opt_in_app
 
 
 _PYPROJECT = """[project]
@@ -59,7 +53,13 @@ def test_opt_in_adds_the_dependency_and_the_tag(tmp_path: Path) -> None:
 
     opt_in_app.apply_opt_in(tmp_path, "demo-app", is_check_only=False, is_removal=False)
 
-    assert "red-scribble" in (app_dir / "pyproject.toml").read_text()
+    pyproject = tomllib.loads((app_dir / "pyproject.toml").read_text())
+    assert "red-scribble" in pyproject["project"]["dependencies"]
+    # A standalone app takes the library from the checkout, through a path source of its own.
+    assert pyproject["tool"]["uv"]["sources"]["red-scribble"] == {
+        "path": "../../libs/red_scribble",
+        "editable": True,
+    }
     page = (app_dir / "src" / "demo_app" / "assets" / "page.html").read_text()
     assert "{{ red_scribble_tag() }}" in page
     assert page.index("{{ red_scribble_tag() }}") < page.index("</head>")

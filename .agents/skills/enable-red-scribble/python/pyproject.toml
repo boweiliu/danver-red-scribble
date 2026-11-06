@@ -1,0 +1,13 @@
+[project]
+name = "enable-red-scribble-skill"
+version = "0.1.0"
+description = "Opts an app in to (or out of) Red Scribble, idempotently"
+requires-python = ">=3.12"
+dependencies = ["tomlkit>=0.12"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["enable_red_scribble_skill"]

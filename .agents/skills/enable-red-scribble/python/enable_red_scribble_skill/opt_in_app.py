@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["tomlkit>=0.12"]
-# ///
 """Add (or remove) an app's Red Scribble opt-in, idempotently.
 
 The opt-in is two mechanical edits plus one wiring line:
@@ -36,10 +32,16 @@ DEPENDENCY_NAME: Final[str] = "red-scribble"
 TEMPLATE_TAG: Final[str] = "{{ red_scribble_tag() }}"
 HELPER_IMPORT: Final[str] = "from red_scribble.embed import register_jinja_helper"
 HELPER_CALL: Final[str] = "register_jinja_helper("
+# An app under system/apps is a standalone uv project, so it takes the library from its
+# checkout through an editable path source of its own (the root workspace gives it nothing).
+LIBRARY_SOURCE: Final[dict[str, object]] = {"path": "../../libs/red_scribble", "editable": True}
 
-# The apps that serve the workspace itself rather than a page someone iterates on. Neither is a
-# Flask template this skill could edit, and neither is a surface Red Scribble is meant for.
-EXCLUDED_APPS: Final[frozenset[str]] = frozenset({"system_interface", "red_scribble", "terminal"})
+# The apps that serve the workspace itself rather than a page someone iterates on. None is a
+# Flask template this skill could edit, and none is a surface Red Scribble is meant for. ``chat``
+# is here for the same reason as ``system_interface`` -- this workspace splits the chat out of the
+# shell into its own app, and it is also where feedback is delivered, so scribbling on it would
+# feed the surface back into itself.
+EXCLUDED_APPS: Final[frozenset[str]] = frozenset({"system_interface", "chat", "red_scribble", "terminal"})
 
 _HEAD_CLOSE: Final[str] = "</head>"
 
@@ -145,23 +147,48 @@ def _has_dependency(dependencies: Array) -> bool:
     return any(str(entry).split(">")[0].split("=")[0].strip() == DEPENDENCY_NAME for entry in dependencies)
 
 
+def _uv_sources(document: tomlkit.TOMLDocument) -> Table:
+    tool = document.setdefault("tool", tomlkit.table(is_super_table=True))
+    uv = tool.setdefault("uv", tomlkit.table(is_super_table=True))
+    return uv.setdefault("sources", tomlkit.table())
+
+
+def _has_source(document: tomlkit.TOMLDocument) -> bool:
+    sources = document.get("tool", {}).get("uv", {}).get("sources", {})
+    return DEPENDENCY_NAME in sources
+
+
 def add_dependency(pyproject_path: Path) -> bool:
-    """Declare the ``red-scribble`` dependency. Returns whether anything changed."""
+    """Declare the ``red-scribble`` dependency and its path source. Returns whether anything changed."""
     document, dependencies = _dependencies(pyproject_path)
-    if _has_dependency(dependencies):
+    if _has_dependency(dependencies) and _has_source(document):
         return False
-    dependencies.append(DEPENDENCY_NAME)
+    if not _has_dependency(dependencies):
+        dependencies.append(DEPENDENCY_NAME)
+    if not _has_source(document):
+        source = tomlkit.inline_table()
+        source.update(LIBRARY_SOURCE)
+        _uv_sources(document)[DEPENDENCY_NAME] = source
     pyproject_path.write_text(tomlkit.dumps(document))
     return True
 
 
 def remove_dependency(pyproject_path: Path) -> bool:
     document, dependencies = _dependencies(pyproject_path)
-    if not _has_dependency(dependencies):
+    if not _has_dependency(dependencies) and not _has_source(document):
         return False
     for index in reversed(range(len(dependencies))):
         if str(dependencies[index]).split(">")[0].split("=")[0].strip() == DEPENDENCY_NAME:
             del dependencies[index]
+    if _has_source(document):
+        sources = _uv_sources(document)
+        del sources[DEPENDENCY_NAME]
+        if not sources:
+            del document["tool"]["uv"]["sources"]
+            if not document["tool"]["uv"]:
+                del document["tool"]["uv"]
+            if not document["tool"]:
+                del document["tool"]
     pyproject_path.write_text(tomlkit.dumps(document))
     return True
 

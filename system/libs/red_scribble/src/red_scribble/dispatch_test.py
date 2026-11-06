@@ -423,3 +423,60 @@ def test_build_message_names_every_attribute_the_chat_card_reads() -> None:
     without = ET.fromstring(build_feedback_message(saved, RedScribbleConfig(mode="live"), "notes"))
     assert without.get("screenshot") is None
     assert without.get("mode") == "live"
+
+
+# The chat app's e2e suite renders this library's feedback document from a checked-in copy
+# (the chat's venv does not hold this standalone library), so this test holds that copy to
+# what ``build_feedback_message`` builds today from the same inputs.
+_CHAT_FIXTURE = (
+    Path(__file__).resolve().parents[4] / "apps/chat/imbue/chat/testdata/red_scribble_feedback.xml"
+)
+
+
+def test_build_feedback_message_still_matches_the_chat_apps_fixture() -> None:
+    def packet_id(number: int) -> PacketId:
+        return PacketId(f"fbk-{number:032x}")
+
+    saved = [
+        SavedScribble(
+            packet={
+                "kind": "stroke",
+                "point": {"x": 534.19, "y": 86.38},
+                "anchor": "html > body > main",
+                "strokes": [[[1, 2]]],
+                "page_url": "https://example/app",
+            },
+            packet_id=packet_id(1),
+            raw_path=Path("/abs/1.json"),
+        ),
+        SavedScribble(
+            packet={
+                "kind": "voice",
+                "point": {"x": 590.61, "y": 116.48},
+                "anchor": "main > div",
+                "transcript": "I want an earthquake",
+                "page_url": "https://example/app",
+            },
+            packet_id=packet_id(2),
+            raw_path=Path("/abs/2.json"),
+        ),
+        SavedScribble(
+            packet={
+                "kind": "text",
+                "point": {"x": 618.27, "y": 159.35},
+                "anchor": "main > div",
+                "text": "earthquake button",
+                "page_url": "https://example/app",
+            },
+            packet_id=packet_id(3),
+            raw_path=Path("/abs/3.json"),
+        ),
+    ]
+    config = RedScribbleConfig(target_agent_id="agent-test-123", mode="batch")
+
+    built = build_feedback_message(saved, config, "scribble-box", Path("/abs/shot.png"))
+
+    assert built == _CHAT_FIXTURE.read_text(), (
+        f"the feedback document changed; write the new one to {_CHAT_FIXTURE} so the chat's "
+        "e2e test renders what the library sends"
+    )
